@@ -1,27 +1,16 @@
 const queryVariables = require(`./_lib/get-query-vars`)
+const { CLAIMS } = require(`@qnzl/auth`)
+const authCheck = require(`./_lib/auth`)
 const fetch = require(`node-fetch`)
-const auth = require(`@qnzl/auth`)
-
-const { CLAIMS } = auth
 
 const todoistKey = process.env.TODOIST_KEY
 
-module.exports = async (req, res) => {
-  const {
-    authorization,
-  } = req.headers
-
+const handler = async (req, res) => {
   const accessToken = req.headers[`x-todoist-access-token`]
 
   const {
     id
   } = req.query
-
-  const isTokenValid = auth.checkJWT(authorization, CLAIMS.todoist.dump, `watchers`, process.env.ISSUER)
-
-  if (!isTokenValid) {
-    return res.status(401).send()
-  }
 
   let tasks
   try {
@@ -45,5 +34,7 @@ module.exports = async (req, res) => {
   }
 }
 
-
+module.exports = (req, res) => {
+  return authCheck(CLAIMS.todoist.dump)(req, res, handler)
+}
 

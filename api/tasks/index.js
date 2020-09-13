@@ -1,21 +1,10 @@
+const { CLAIMS } = require(`@qnzl/auth`)
+const authCheck = require(`./_lib/auth`)
 const fetch = require(`node-fetch`)
-const auth = require(`@qnzl/auth`)
-
-const { CLAIMS } = auth
 
 const todoistKey = process.env.TODOIST_KEY
 
-module.exports = async (req, res) => {
-  const {
-    authorization
-  } = req.headers
-
-  const isTokenValid = auth.checkJWT(authorization, CLAIMS.todoist.get.tasks, `watchers`, process.env.ISSUER)
-
-  if (!isTokenValid) {
-    return res.status(401).send()
-  }
-
+const handler = async (req, res) => {
   let tasks
   try {
     console.log(`getting tasks`)
@@ -37,4 +26,7 @@ module.exports = async (req, res) => {
   }
 }
 
+module.exports = (req, res) => {
+  return authCheck(CLAIMS.todoist.get.tasks)(req, res, handler)
+}
 

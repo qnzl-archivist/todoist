@@ -1,6 +1,6 @@
-const queryVariables = require(`./_lib/get-query-vars`)
+const queryVariables = require(`../_lib/get-query-vars`)
 const { CLAIMS } = require(`@qnzl/auth`)
-const authCheck = require(`./_lib/auth`)
+const authCheck = require(`../_lib/auth`)
 const fetch = require(`node-fetch`)
 
 const todoistKey = process.env.TODOIST_KEY

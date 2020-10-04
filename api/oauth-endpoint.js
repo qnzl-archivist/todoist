@@ -14,6 +14,10 @@ module.exports = async (req, res) => {
     projectId = ''
   } = req.query
 
+  if (!authorization) {
+    return res.status(401).send()
+  }
+
   const isTokenValid = auth.checkJWT(authorization, CLAIMS.todoist.get.oauthRoute, `watchers`, process.env.ISSUER)
 
   if (!isTokenValid) {

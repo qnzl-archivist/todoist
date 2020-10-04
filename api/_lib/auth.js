@@ -1,3 +1,5 @@
+const auth = require(`@qnzl/auth`)
+
 module.exports = (claim) => (req, res, next) => {
   const {
     authorization

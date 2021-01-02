@@ -1,34 +1,31 @@
-const { URLSearchParams } = require(`url`)
 const fetch = require(`node-fetch`)
+const auth = require(`@qnzl/auth`)
+
+const { CLAIMS } = auth
+
+const clientId = process.env.TODOIST_CLIENT_ID
 
 module.exports = async (req, res) => {
-  const { code } = req.query
+  const {
+    authorization
+  } = req.headers
 
-  const body = new URLSearchParams()
-  body.append(`code`, code)
-  body.append(`grant_type`, `authorization_code`)
-  body.append(`client_id`, process.env.TODOIST_CLIENT_ID)
-  body.append(`client_secret`, process.env.TODOIST_CLIENT_SECRET)
-  body.append(`redirect_uri`, `${process.env.TODOIST_REDIRECT_URL}/api/request-token`)
+  const {
+    projectId = ''
+  } = req.query
 
-  fetch(`https://todoist.com/oauth/access_token`, {
-      method: `POST`,
-      headers: {
-        'Content-Type': `application/x-www-form-urlencoded; charset=UTF-8`
-      },
-      body
-    })
-    .then(async (response) => {
-      const {
-        access_token,
-        expires_in,
-        refresh_token,
-        scope
-      } = await response.json()
+  if (!authorization) {
+    return res.status(401).send()
+  }
 
-      // TODO Do something with the token
-      console.log(`got todoist token: ${access_token}`)
+  const isTokenValid = auth.checkJWT(authorization, CLAIMS.todoist.get.oauthRoute, `watchers`, process.env.ISSUER)
 
-      return res.status(200).send({ access_token, refresh_token })
-    })
+  if (!isTokenValid) {
+    return res.status(401).send()
+  }
+
+  const requestUrl = `https://todoist.com/oauth/authorize?client_id=${clientId}&scope=data:read,data:delete&state=${Number(new Date())}`
+
+  return res.send(requestUrl)
 }
+

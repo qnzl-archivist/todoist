@@ -2,10 +2,11 @@ const { CLAIMS } = require(`@qnzl/auth`)
 const authCheck = require(`./_lib/auth`)
 const fetch = require(`node-fetch`)
 
-const todoistKey = process.env.TODOIST_KEY
-
 const handler = async (req, res) => {
   let tasks
+
+  const todoistKey = req.headers[`x-todoist-access-token`]
+
   try {
     console.log(`getting tasks`)
 
@@ -59,5 +60,6 @@ const handler = async (req, res) => {
 }
 
 module.exports = (req, res) => {
+  console.log("REQUEST:", req.body, req.query, req.headers)
   return authCheck(CLAIMS.todoist.dump)(req, res, handler)
 }

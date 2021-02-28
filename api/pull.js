@@ -1,11 +1,7 @@
-const { CLAIMS } = require(`@qnzl/auth`)
-const authCheck = require(`./_lib/auth`)
 const fetch = require(`node-fetch`)
 
-const handler = async (req, res) => {
-  let tasks
-
-  const todoistKey = req.headers[`x-todoist-access-token`]
+const getTasks = async (todoistKey) => {
+  let tasks = null
 
   try {
     console.log(`getting tasks`)
@@ -24,7 +20,8 @@ const handler = async (req, res) => {
     return res.status(500).send()
   }
 
-  let projects
+  let projects = null
+
   try {
     console.log(`getting projects`)
 
@@ -56,10 +53,97 @@ const handler = async (req, res) => {
     return !task.completed
   })
 
-  return res.json({ tasks, projects })
+  return { tasks, projects }
 }
 
-module.exports = (req, res) => {
-  console.log("REQUEST:", req.body, req.query, req.headers)
-  return authCheck(CLAIMS.todoist.dump)(req, res, handler)
+const getActivity = async (todoistKey) => {
+  let activity = null
+
+  try {
+    console.log(`getting tasks`)
+
+    const response = await fetch(`https://api.todoist.com/sync/v8/activity/get`, {
+        method: `GET`,
+        headers: {
+          'Authorization': `Bearer ${todoistKey}`
+        }
+      })
+
+    activity = await response.json()
+  } catch (e) {
+    console.log(`failed to get tasks`, e)
+
+    return res.status(500).send()
+  }
+
+  return { activity }
+}
+
+const getBackups = async (todoistKey) => {
+  let backups = null
+
+  try {
+    console.log(`getting backups`)
+
+    const response = await fetch(`https://api.todoist.com/sync/v8/backups/get`, {
+        method: `GET`,
+        headers: {
+          'Authorization': `Bearer ${todoistKey}`
+        }
+      })
+
+    backups = await response.json()
+  } catch (e) {
+    console.log(`failed to get backups`, e)
+
+    return res.status(500).send()
+  }
+
+  return { backups }
+}
+
+module.exports = async (req, res) => {
+  let tasks
+
+  const {
+    scope,
+  } = req.query
+
+  const [ type, auth ] = req.headers[`authorization`].split(` `)
+
+  if (!type && !auth) {
+    return res.sendStatus(401)
+  }
+
+  const [ todoistKey ] = Buffer.from(auth, `base64`).toString(`utf8`).split(`:`)
+
+  if (!todoistKey) {
+    return res.sendStatus(401)
+  }
+
+  const scopes = scope.split(`,`)
+
+  const entitiesPromise = scopes.map(async (_scope) => {
+    let events = null
+
+    switch(_scope) {
+      case `activity`:
+        events = await getActivity(todoistKey)
+        break
+      case `backups`:
+        events = await getBackups(todoistKey)
+        break
+      case `tasks`:
+        events = await getTasks(todoistKey)
+        break
+    }
+
+    return events
+  })
+
+  const entities = await Promise.all(entitiesPromise)
+
+  const returnValue = Object.assign({}, ...entities)
+
+  return res.json(returnValue)
 }

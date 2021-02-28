@@ -1,4 +1,4 @@
-## @watchers/todoist
+## todoist
 
 ### Setup
 

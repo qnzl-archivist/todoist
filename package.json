@@ -3,15 +3,16 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "bin": {
+    "todoist": "bin/todoist.js"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "vercel dev --listen 3007"
+    "build": "pkg bin/todoist.js --out-path pkg/"
   },
   "author": "Madeline Cameron <maddie@qnzl.co>",
   "license": "MIT",
   "dependencies": {
-    "@qnzl/auth": "^1.0.5",
-    "jose": "^1.17.2",
+    "commander": "^7.1.0",
     "node-fetch": "^2.6.0"
   }
 }

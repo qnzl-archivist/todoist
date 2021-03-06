@@ -1,10 +1,16 @@
+#!/usr/bin/node env
+
 const { URLSearchParams } = require('url')
 const { promisify } = require('util')
 const fetch = require('node-fetch')
 const { Command } = require('commander')
 const fs = require('fs')
+const server = require('server')
 
 const program = new Command()
+
+const { get } = server.router
+const { send, status } = server.reply
 
 const {
   TODOIST_BASE_REDIRECT_URL,
@@ -31,7 +37,7 @@ program
 program
   .command('exchange-token')
   .description('Exchange OAuth2 code for access token')
-  .option('-c, --code [oauth code]', 'OAuth code from step 1')
+  .option('--port [port]', 'Server port', 3000)
   .option('--client-id [id]', 'Todoist client ID')
   .option('--client-secret [secret]', 'Todoist client secret')
   .option('--redirect-url [url]', 'OAuth redirect URL', `${TODOIST_BASE_REDIRECT_URL}/api/oauth-callback`)
@@ -41,6 +47,8 @@ program
   .command('dump')
   .description('Dump to file')
   .option('-t, --token', 'OAuth access token')
+  .option('--export-format <format>', 'Export file format', `{date}-todoist.json`)
+  .option('--export-path [path]', 'Export file path')
   .action(dump)
 
 program.parseAsync(process.argv)
@@ -54,44 +62,66 @@ function getOAuthUrl({
 }
 
 async function exchangeToken({
-  code,
+  port,
   clientId,
   clientSecret,
   redirectUrl,
 }) {
-  const body = new URLSearchParams()
+  console.log(`Waiting to exchange token at ${redirectUrl} on port ${port}...`)
 
-  body.append(`code`, code)
-  body.append(`grant_type`, `authorization_code`)
-  body.append(`client_id`, clientId)
-  body.append(`client_secret`, clientSecretj)
-  body.append(`redirect_uri`, redirectUrl)
+  return new Promise((resolve, reject) => {
+    server({ port: Number(port) }, [
+      get('/', async ctx => {
+        console.log(`Received exchange token request...`)
+        const code = ctx.query.code
 
-  fetch(`https://todoist.com/oauth/access_token`, {
-      method: `POST`,
-      headers: {
-        'Content-Type': `application/x-www-form-urlencoded; charset=UTF-8`
-      },
-      body
-    })
-    .then(async (response) => {
-      const {
-        access_token,
-        expires_in,
-        refresh_token,
-        scope
-      } = await response.json()
+        const body = new URLSearchParams()
 
-      return res.status(200).send({ access_token, refresh_token })
-    })
+        body.append(`code`, code)
+        body.append(`grant_type`, `authorization_code`)
+        body.append(`client_id`, clientId)
+        body.append(`client_secret`, clientSecret)
+        body.append(`redirect_uri`, redirectUrl)
+
+        try {
+          const res = await fetch(`https://todoist.com/oauth/access_token`, {
+              method: `POST`,
+              headers: {
+                'Content-Type': `application/x-www-form-urlencoded; charset=UTF-8`
+              },
+              body
+            })
+
+          const {
+            access_token,
+          } = await res.json()
+
+          console.log(access_token)
+
+          return process.exit(0)
+        } catch (e) {
+          console.error(`Error occurred while retrieving access token:`, e)
+
+          return process.exit(1)
+        }
+      })
+    ])
+  })
 }
 
 async function dump(argv) {
   let tasks
 
   const {
+    exportPath,
     accessToken,
+    exportFormat,
   } = argv
+
+  const filledExportFormat = exportFormat
+    .replace(`{date}`, dayjs().format(`YYYY-MM-DD`))
+
+  const EXPORT_PATH = resolve(exportPath, filledExportFormat)
 
   try {
     console.log(`getting tasks`)
@@ -105,9 +135,7 @@ async function dump(argv) {
 
     tasks = await response.json()
   } catch (e) {
-    console.log(`failed to get tasks`, e)
-
-    return res.status(500).send()
+    console.error(`failed to get tasks`, e)
   }
 
   let projects
@@ -123,9 +151,7 @@ async function dump(argv) {
 
     projects = await response.json()
   } catch (e) {
-    console.log(`failed to get projects`, e)
-
-    return res.status(500).end()
+    console.error(`failed to get projects`, e)
   }
 
   console.log(`assigning project names to ${tasks.length} tasks from ${projects.length} projects`)

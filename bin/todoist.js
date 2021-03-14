@@ -33,16 +33,16 @@ function exit(code) {
 program
   .command('url')
   .description('Get OAuth first step URL')
-  .option('--client-id [id]', 'Todoist client ID')
+  .option('--client-id [id]', 'Client ID')
   .action(getOAuthUrl)
 
 program
   .command('exchange-token')
   .description('Exchange OAuth2 code for access token')
   .option('--port [port]', 'Server port', 3000)
-  .option('--client-id [id]', 'Todoist client ID')
-  .option('--client-secret [secret]', 'Todoist client secret')
-  .option('--redirect-url [url]', 'OAuth redirect URL', `${TODOIST_BASE_REDIRECT_URL}/api/oauth-callback`)
+  .option('--client-id [id]', 'Client ID')
+  .option('--client-secret [secret]', 'Client secret')
+  .option('--redirect-url [url]', 'OAuth redirect URL')
   .action(exchangeToken)
 
 program
